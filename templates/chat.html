@@ -7,32 +7,85 @@
         <title>Chat en python con Flask</title>
     </head>
     <body>
-        <h1>Chat en python con Flask</h1>
-        <input type="text" name="nombre" placeholder="Nombre" required>
-        <input type="text" name="mensaje" placeholder="Mensaje" required>
-        <!--<input type="submit" value="Enviar">-->
-        <button id="enviar">Enviar</button>
+        <h1>Hola <b id="username">{{ current_user.username }}</b></h1>
+        <a href="/logout" onclick="leave_room();">Cerrar Sesión</a><br><br>
+        <input type="text" name="mensaje" placeholder="Mensaje"><br>
+        <input type="file" name="img" accept="image/png, image/jpeg"><br>
+        <button id="enviar" onclick="send();">Enviar</button>
+        <ol id="list">
+        </ol>
         <ul id="message">
         
         </ul>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.js" charset="utf-8"></script>
         <script>
             const socket = io();
-            socket.emit('message', 'hello');
+            const username = document.getElementById('username').textContent;
 
-
-            socket.on('message', function(data) {
-                console.log(data);
+            socket.on('message', (data) => {
                 document.getElementById('message').innerHTML += `<li>${data}</li>`;
             });
 
-            const btn = document.getElementById('enviar');
-            btn.onclick = function() {
-                const nombre = document.getElementsByName('nombre')[0].value;
+            socket.on('image', (data) => {
+                document.getElementById('message').innerHTML += `<li>${data.username} - <img src="${data.base64}" style="max-width: 300px; max-height: 300px;"></li>`;
+            })
+
+            socket.on('connect', () => {
+                socket.emit('join', username);
+            });
+
+            socket.on('join', (data) => {
+                if(document.getElementById(data) === null){
+                    document.getElementById('list').innerHTML += '<li id="' + data + '">' + data + '</li>';
+                    socket.emit('join', username);
+                }
+            });
+
+            socket.on('leave', (username) => {
+                document.getElementById(username).remove();
+            });
+
+            async function send() {
                 const mensaje = document.getElementsByName('mensaje')[0].value;
-                socket.send(nombre + ': ' + mensaje);
-                document.getElementsByName('nombre')[0].value = '';
-                document.getElementsByName('mensaje')[0].value = '';
+                const img = document.getElementsByName('img')[0].files;
+                if(mensaje === '') {
+                    if(img.length == 0) {
+                        alert('Debes escribir un mensaje o enviar una imagen');
+                    } else {
+                        const file = img[0];
+                        //socket.emit('image', {username, file});
+                        getBase64(file).then(base64 => {
+                            socket.emit('image', {username, base64});
+                            document.getElementsByName('img')[0].value = '';
+                        });
+                    }
+                } else {
+                    socket.emit('message', mensaje);
+                    if(img.length != 0) {
+                        const file = img[0];
+                        //socket.emit('image', {username, file});
+                        getBase64(file).then(base64 => {
+                            socket.emit('image', {username, base64});
+                            document.getElementsByName('img')[0].value = '';
+                        });
+                    }
+                    document.getElementsByName('mensaje')[0].value = '';
+                }
+            };
+
+            function leave_room() {
+                socket.emit('leave', {}, function() {
+                    socket.disconnect();
+                });
+            }
+
+            async function getBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                });
             }
         </script>
     </body>
