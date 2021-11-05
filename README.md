@@ -2,6 +2,8 @@
 
 Requiere Python 3.9.2 y pip 21.2.4
 
+Si es necesario, deberás crear tu entorno virtual con la biblioteca de tu preferencia
+
 Para instalar todo debidamente, debemos realizar los siguientes comandos:
 
 ` pip install -r requirements.txt `
